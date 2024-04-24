@@ -1,0 +1,5 @@
+#Ignore all .csvs
+*.csv
+
+#Ignore the environment
+/a-alpha/*
