@@ -180,36 +180,112 @@ def get_data_loaders_per_kfold(full_dataset, fold_idx, batch_size, kfold_structu
 
 
 #Function to help parameterize the CNN models we are building. Helpful for modularity
-def cnn_model_instantiation(cnn_kd_prediction = None, **kwargs):
+def cnn_model_instantiation(config_dict = {}):
+
+    if not config_dict:
+        raise ValueError("Missing model configuation details")
+
+    #Architecture retrieval: 
+    prediction_architecture = config_dict.get('prediction_architecture', None)
+
+    if not prediction_architecture:
+        raise ValueError("Missing model architecture for model isntantiation")
 
     #Architecture details
-    sequence_length = kwargs.get('encoded_sequence_length',246) #dynamically determined
-    num_additional_features = kwargs.get('num_of_additional_features', 20)#dynamically determined
-    use_aa_features = kwargs.get('use_aa_features', True)
+    sequence_length = config_dict.get('encoded_sequence_length',246) #dynamically determined
+    num_additional_features = config_dict.get('num_of_additional_features', 20)#dynamically determined
+    use_aa_features = config_dict.get('use_aa_features', True)
     
-    use_embedding = kwargs.get('use_embedding', True)
-    use_dropout = kwargs.get('use_dropout', True)
-    conv_dropout = kwargs.get('conv_dropout', 0.2)
+    use_embedding = config_dict.get('use_embedding', True)
+    use_dropout = config_dict.get('use_dropout', True)
+    conv_dropout = config_dict.get('conv_dropout', 0.2)
+    use_batch_norm = config_dict.get('use_batch_norm', False)
 
     #Conv details
     
-    embedding_dimension = kwargs.get('embedding_dimension', 64)
-    conv_layer_kernel_size = kwargs.get('conv_layer_kernel_size', 3)
-    pooling_kernel_size = kwargs.get('pooling_kernel_size', 2)
-    pool_stride = kwargs.get('pool_stride', 2)
-    conv_stride = kwargs.get('conv_stride', 1)
-    conv_padding = kwargs.get('conv_padding' , 1)
-    conv_dilation = kwargs.get('conv_dilation',1)
+    embedding_dimension = config_dict.get('embedding_dimension', 64)
+    conv_layer_kernel_size = config_dict.get('conv_layer_kernel_size', 3)
+    pooling_kernel_size = config_dict.get('pooling_kernel_size', 2)
+    pool_stride = config_dict.get('pool_stride', 2)
+    conv_stride = config_dict.get('conv_stride', 1)
+    conv_padding = config_dict.get('conv_padding' , 1)
+    conv_dilation = config_dict.get('conv_dilation',1)
 
 
     #Optimizer
-    lr_rate = kwargs.get('lr_rate',0.001)
-    L2_reg = kwargs.get('L2_reg',1e-5)
+    lr_rate = config_dict.get('lr_rate',0.001)
+    L2_reg = config_dict.get('L2_reg',1e-5)
 
     #Model name
-    model_name = kwargs.get('model_name', 'Protein_Kd_Generic_Model')
+    model_name = config_dict.get('model_name', 'Protein_Kd_Generic_Model')
 
-    model = cnn_kd_prediction(use_cnn = True,
+    model = prediction_architecture(use_cnn = True,
+                        sequence_length = sequence_length,
+                        use_aa_features = use_aa_features,
+                        num_additional_features = num_additional_features,
+                        embedding_dim = embedding_dimension,
+                        conv_layer_kernel_size = conv_layer_kernel_size,
+                        pooling_kernel_size = pooling_kernel_size,
+                        pool_stride = pool_stride,
+                        conv_dilation = conv_dilation,
+                        conv_stride = conv_stride,
+                        use_embedding = use_embedding,
+                        conv_padding = conv_padding,
+                        model_name = model_name,
+                        use_dropout = use_dropout, 
+                        dropout_rate = conv_dropout, 
+                        use_batch_norm = use_batch_norm)
+
+    loss_measurement = nn.MSELoss()
+
+    if L2_reg:
+        optimizer = optim.Adam(model.parameters(), lr=lr_rate,  weight_decay = L2_reg)
+    else:
+        optimizer = optim.Adam(model.parameters(), lr=lr_rate)
+
+    # Move model to the appropriate device (GPU or CPU)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    
+    return model, model_name, optimizer, loss_measurement, device
+
+#Function to help parameterize the CNN models we are building. Helpful for modularity
+def cnn_trans_model_instantiation(cnn_trans_kd_prediction = None, config_dict = {}):
+
+    # CNN configuration
+    sequence_length = config_dict.get('sequence_length', 246)
+    embed_dim = config_dict.get('embed_dim', 64)
+    use_embedding = config_dict.get('use_embedding', False)
+    conv_kernel_size = config_dict.get('conv_kernel_size', 3)
+    conv_stride = config_dict.get('conv_stride', 1)
+    conv_padding = config_dict.get('conv_padding', 1)
+    pool_kernel_size = config_dict.get('pool_kernel_size', 2)
+    pool_stride = config_dict.get('pool_stride', 2)
+    num_channels = config_dict.get('num_channels', 20)
+
+    # Transformer configuration
+    nheads = config_dict.get('nheads', 8)
+    ffn_dim = config_dict.get('ffn_dim', 512)
+    transformer_layers = config_dict.get('transformer_layers', 4)
+    features_dim = config_dict.get('features_dim', 128)
+    
+    # Additional features
+    use_aa_features = config_dict.get('use_aa_features', False)
+    num_additional_features = config_dict.get('num_additional_features', 0)
+    
+    use_dropout = config_dict.get('use_dropout', False)
+    dropout_rate = config_dict.get('dropout_rate', 0.5)
+    use_batch_form = config_dict.get('use_batch_norm', False)
+    model_name = config_dict.get('model_name', 'ProteinKd_CNN_Transformer')
+
+    #Optimizer
+    lr_rate = config_dict.get('lr_rate',0.001)
+    L2_reg = config_dict.get('L2_reg',1e-5)
+
+    #Model name
+    model_name = config_dict.get('model_name', 'Protein_Kd_Generic_Model')
+
+    model = cnn_trans_kd_prediction(use_cnn = True,
                         sequence_length = sequence_length,
                         use_aa_features = use_aa_features,
                         num_additional_features = num_additional_features,
@@ -242,6 +318,7 @@ def post_process_epoch_metrics(metrics):
     averaged_across_epochs = {}
     avg_score_per_metric = {}
     avg_score_per_fold = {}
+    max_score_per_metric = {}
     
     for data_slice, metrics_and_folds in metrics.items():
        
@@ -261,6 +338,8 @@ def post_process_epoch_metrics(metrics):
 
         avg_score_per_metric[data_slice] = {metric: np.mean(scores) for metric, scores in avg_score_per_metric[data_slice].items()}
 
-    return avg_score_per_fold, avg_score_per_metric
+        max_score_per_metric[data_slice] = {metric: np.max(scores) for metric, scores in avg_score_per_metric[data_slice].items()}
+
+    return avg_score_per_fold, avg_score_per_metric, max_score_per_metric
 
 
