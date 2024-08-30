@@ -13,10 +13,74 @@ import os
 import pickle
 
 
+class SequenceKdDataset(Dataset):
+    def __init__(self, sequences, features, labels, encoding_type):
+        self.sequences = sequences
+        self.features = torch.tensor(features, dtype=torch.float32)
+        self.labels = torch.tensor(labels, dtype=torch.float32)
+        self.encoding_type = encoding_type
+        self.amino_acid_mapping =  {
+                                    'A': 0,  # Alanine
+                                    'C': 1,  # Cysteine
+                                    'D': 2,  # Aspartic Acid
+                                    'E': 3,  # Glutamic Acid
+                                    'F': 4,  # Phenylalanine
+                                    'G': 5,  # Glycine
+                                    'H': 6,  # Histidine
+                                    'I': 7,  # Isoleucine
+                                    'K': 8,  # Lysine
+                                    'L': 9,  # Leucine
+                                    'M': 10, # Methionine
+                                    'N': 11, # Asparagine
+                                    'P': 12, # Proline
+                                    'Q': 13, # Glutamine
+                                    'R': 14, # Arginine
+                                    'S': 15, # Serine
+                                    'T': 16, # Threonine
+                                    'V': 17, # Valine
+                                    'W': 18, # Tryptophan
+                                    'Y': 19  # Tyrosine
+                                }
+
+
+    # Function to perform one-hot encoding
+    def one_hot_encode(self, sequence):
+        # Initialize the encoded sequence array
+        encoded = np.zeros((len(sequence), len(self.amino_acid_mapping)), dtype=np.float32)
+        for i, aa in enumerate(sequence):
+            if aa in self.amino_acid_mapping:
+                encoded[i, self.amino_acid_mapping[aa]] = 1.0
+        return encoded
+    
+    #Function for indices and embedding layers support
+    def sequence_to_indices(self, sequence):
+        # Convert the sequence to a list of indices
+        indices = [self.amino_acid_mapping[aa] for aa in sequence if aa in self.amino_acid_mapping]
+        return indices
+    
+    def __len__(self):
+        return len(self.labels)
+     
+
+    def __getitem__(self, idx):
+       
+        sequence = self.sequences[idx]
+        features = self.features[idx]
+        label = self.labels[idx]
+
+        if self.encoding_type == "one_hot":
+            sequence_encoded = self.one_hot_encode(sequence)
+        elif self.encoding_type == "embeddings":
+            sequence_encoded = self.sequence_to_indices(sequence)
+        
+        #Use proper torch type for encoded sequences
+        sequence_encoded = torch.tensor(sequence_encoded, dtype=torch.long if self.encoding_type == "one_hot" else torch.long)
+
+        return sequence_encoded, features, label
 
 
 # Define a custom Dataset class
-class SequenceKdDataset(Dataset):
+class SequenceKdDataset_w_padding(Dataset):
     def __init__(self, sequences, features, labels, encoding_type, use_padding = False, max_pad_length = 0, padding_token_index = 20):
         self.sequences = sequences
         self.features = torch.tensor(features, dtype=torch.float32)
@@ -240,6 +304,7 @@ def cnn_model_instantiation(config_dict = {}):
     conv_dilation = config_dict.get('conv_dilation',1)
 
     padding_idx = config_dict.get('padding_idx', 20)
+    using_padding = config_dict.get('using_padding', False)
 
 
     #Optimizer
@@ -265,7 +330,8 @@ def cnn_model_instantiation(config_dict = {}):
                         use_dropout = use_dropout, 
                         dropout_rate = conv_dropout, 
                         use_batch_norm = use_batch_norm,
-                        padding_idx = padding_idx)
+                        padding_idx = padding_idx,
+                        using_padding = using_padding)
 
     loss_measurement = nn.MSELoss()
 

@@ -20,6 +20,10 @@ class ProteinKd_CNN_Prediction(nn.Module):
         # Define layers
         if self.use_embedding:
             self.embedding = nn.Embedding(num_embeddings=21, embedding_dim=self.embed_dim, padding_idx = self.padding_idx)
+            # if self.using_padding:
+            #     self.embedding = nn.Embedding(num_embeddings=21, embedding_dim=self.embed_dim, padding_idx = self.padding_idx)
+            # else:
+            #     self.embedding = nn.Embedding(num_embeddings=20, embedding_dim=self.embed_dim)
             input_channels = self.embed_dim
         else:
             input_channels = self.num_channels
@@ -95,8 +99,8 @@ class ProteinKd_CNN_Prediction(nn.Module):
         self.use_batch_norm = kwargs.get('use_batch_norm', False)
         self.model_name = kwargs.get('model_name', 'Generic_ProteinKd')
 
-        self.padding_idx = kwargs.get('padding_idx', 25) #set the padding index to avalue that could never be an amino acid, 25
-
+        self.padding_idx = kwargs.get('padding_idx', 20) #set the padding index to avalue that could never be an amino acid, 20
+        self.using_padding = kwargs.get('using_padding', False)
     
 
     def forward(self, x, additional_features=None):

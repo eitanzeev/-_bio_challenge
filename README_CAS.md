@@ -2,7 +2,10 @@ Hi! Welcome to my ReadME.md.
 
 This will serve as a brief description of my work. 
 
-I split my code into 4 files. 
+I split my code into 4 files.
+
+## Scripts Organization
+
 1. `a_alpha_data_exploration.ipynb`
     - This notebook is your main stop for understanding my work. 
     - Run through the notebook sequentially to re-create my work. Alternatively, run specific experiments by running all code up to the "Modelling" Section divide. Then Run the parameters intialization.
@@ -38,10 +41,20 @@ I split my code into 4 files.
 5. `results_exploration.ipynb` - A notebook summarizing the results for each experiment for easier reporting in ppt 
 
 
-
+### File Storage
 Models are stored in `./models`. Model results are stored in `./model_results`. 
 
 Models are named dynamically per experiment based on user entries! I adjust model saving to save per fold but that can adjusted. 
 
 
+### Loading my model
+I uploaded the final, best performing CNN model to the shared folder (as explained in my notebook). For reference it is:
+`models/ProteinCNN_Embedding_w_AA_w_Dropout_w_PADDING/ProteinCNN_Embedding_w_AA_w_Dropout_w_PADDING_model_Training_Slice_exclude_high_q_values_MinMax_embeddings_Fold(1).pt`
+Use that model when loading the state dictionary when creating predictions in the HoldOut work section.
+
+
+
+### Misc Notes
 I spent quite a bit of time on making my architecures dynamic and easily adjustable to user preferences. My goal was to demonstrate my understanding of deep learning architectures while highlighing my experience as a Machine Learning Engineer with experience in pipeline development. My opinion is that often times deep learning knowledge and expertise are hamstrung by bad engineering. I tried to demosntrate that I can bridge that gap!
+
+
